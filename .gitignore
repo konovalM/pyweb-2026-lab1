@@ -35,3 +35,7 @@ docs/assets/generated/
 .env
 *.pem
 id_rsa*
+
+# Промежуточный typst-файл от Quarto при сборке PDF
+REPORT.typ
+.quarto/
