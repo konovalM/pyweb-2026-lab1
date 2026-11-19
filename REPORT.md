@@ -25,7 +25,7 @@
 |---|-----|-------------|
 | 1 | Python + pip + virtualenv | Python 3.12.3 (pyenv); venv в `.venv` |
 | 2 | Каталог проекта, venv, активация | `python -m venv .venv` |
-| 3 | `requirements.txt`, `.gitignore` | зафиксированы версии; из игнора — `.venv/`, `site/`, `_build/`, `docs/assets/generated/` |
+| 3 | Зависимости и gitignore | зафиксированы версии в requirements.txt; из игнора — .venv/, site/, \_build/, docs/assets/generated/ |
 | 4 | Каркас MkDocs + Material | `mkdocs.yml`, тема Material, RU-поиск |
 | 5 | `mkdocs serve` / `mkdocs build --strict` | строгая сборка проходит без предупреждений |
 | 6 | Git + GitHub | репозиторий, ветка `main` |
