@@ -34,6 +34,8 @@
 | 9 | Отечественный хостинг | развёрнут на сервере Selectel (`scripts/deploy-selectel.sh`): изолированный контейнер nginx на :80, rsync по SSH, healthcheck. Шаблон CI — `deploy-selectel.yml` |
 | 10 | Лицензии | контент — CC BY 4.0 (`LICENSE-content`), код — MIT (`LICENSE`) |
 
+: Ход работы по шагам задания {tbl-colwidths="[6,30,64]"}
+
 **Различие двух подходов к публикации на Pages (п.8 задания).**
 Исторический путь — `peaceiris/actions-gh-pages`: сборка пушится в ветку
 `gh-pages`, которую Pages раздаёт как «classic» источник. Официальный путь
