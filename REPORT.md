@@ -320,7 +320,7 @@ RU-поиск из коробки, тривиальный CI на GitHub Pages, 
   GitHub — выбор генератора вторичен; критичнее перенос CI на GitVerse/SourceCraft
   или GitLab CI на сервере (как уже сделано для ps-landing).
 
-## Приложение. Скриншоты запусков CI
+## Приложение А. Скриншоты запусков CI
 
 **Проваленный запуск** — сборка падает на шаге *Configure Pages* (`Get Pages site
 failed`), потому что в репозитории ещё не включён источник Pages = GitHub Actions
@@ -352,4 +352,113 @@ $ curl -s -o /dev/null -w "%{http_code} %{time_total}s\n" http://94.154.130.35.s
 200 0.489s
 $ curl -s http://94.154.130.35.sslip.io/ | grep -o "PS-RESEARCH-LIVE"
 PS-RESEARCH-LIVE
+```
+
+## Приложение Б. Тексты пайплайнов
+
+### Б.1. GitHub Actions → GitHub Pages (`.github/workflows/gh-pages.yml`)
+
+```yaml
+name: Deploy MkDocs to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:                      # не гонять сборку из-за правок, не влияющих на сайт
+      - "docs/**"
+      - "data/**"
+      - "scripts/**"
+      - "mkdocs.yml"
+      - "requirements.txt"
+      - ".github/workflows/gh-pages.yml"
+  workflow_dispatch:            # ручной запуск из вкладки Actions
+
+# Права, которые требует механизм GitHub Pages:
+permissions:
+  contents: read
+  pages: write                  # публиковать артефакт на Pages
+  id-token: write               # OIDC-токен для deploy-pages
+
+# Одновременно — только один деплой; новый push отменяет предыдущий.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip            # кэш зависимостей по requirements.txt
+      - run: pip install -r requirements.txt
+      # Отдаёт base_url для корректного site_url в подкаталоге /<repo>/
+      - id: pages
+        uses: actions/configure-pages@v5
+      # Строгая сборка: битые ссылки и предупреждения = ошибка
+      - name: Build (strict)
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
+        run: mkdocs build --strict
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: site            # каталог сборки MkDocs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4
+```
+
+### Б.2. Деплой на Selectel по SSH (`scripts/deploy-selectel.sh`)
+
+Изолированный контейнер nginx на свободном порту 80 — не затрагивает остальные
+сервисы сервера (ТГ-бот, 3x-ui, Portainer).
+
+```bash
+#!/usr/bin/env bash
+set -euo pipefail
+cd "$(dirname "$0")/.."
+
+# --- параметры сервера ---
+HOST="94.154.130.35"; USER="root"; KEY="$HOME/.ssh/id_ed25519_uz"
+REMOTE_DIR="/opt/ps-research"; SITE_URL="http://94.154.130.35.sslip.io/"
+# IdentitiesOnly + отключённый agent — иначе ssh даёт «too many auth failures»
+SSH_OPTS=(-o IdentitiesOnly=yes -o StrictHostKeyChecking=accept-new -i "$KEY")
+remote() { env -u SSH_AUTH_SOCK ssh "${SSH_OPTS[@]}" "$USER@$HOST" "$@"; }
+
+# 1/4 строгая сборка под адрес отечественного хостинга
+source .venv/bin/activate
+SITE_URL="$SITE_URL" mkdocs build --strict -d site-selectel
+
+# 2/4 заливка статики (rsync с удалением лишнего)
+remote "mkdir -p $REMOTE_DIR/html"
+env -u SSH_AUTH_SOCK rsync -az --delete -e "ssh ${SSH_OPTS[*]}" \
+  site-selectel/ "$USER@$HOST:$REMOTE_DIR/html/"
+
+# 3/4 (пере)запуск изолированного контейнера nginx на :80
+remote "cat > $REMOTE_DIR/nginx.conf" <<'CONF'
+server {
+    listen 80;  server_name _;
+    root /usr/share/nginx/html;  index index.html;
+    location / { try_files $uri $uri/ $uri/index.html =404; }
+    error_page 404 /404.html;
+}
+CONF
+remote "docker rm -f ps-research 2>/dev/null || true; \
+  docker run -d --name ps-research --restart unless-stopped -p 80:80 \
+    -v $REMOTE_DIR/html:/usr/share/nginx/html:ro \
+    -v $REMOTE_DIR/nginx.conf:/etc/nginx/conf.d/default.conf:ro nginx:alpine"
+
+# 4/4 healthcheck: HTTP 200 + контрольная строка
+code=$(curl -s -o /tmp/hc.html -w "%{http_code}" --max-time 15 "$SITE_URL")
+test "$code" = "200" && grep -q "PS-RESEARCH-LIVE" /tmp/hc.html \
+  && echo "деплой успешен" || { echo "healthcheck провален"; exit 1; }
 ```
