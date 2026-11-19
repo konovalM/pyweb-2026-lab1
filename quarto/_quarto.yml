@@ -1,0 +1,19 @@
+project:
+  type: website
+  output-dir: _site
+
+website:
+  title: "Predictive Sensorics · Research (Quarto)"
+  description: "Сборка Quarto — третий генератор для сравнения в P2"
+
+format:
+  html:
+    theme: cosmo
+    toc: true
+    toc-title: "Содержание"
+    code-copy: true
+    highlight-style: github
+
+# Единый источник библиографии с MkDocs/Sphinx
+bibliography: ../docs/refs.bib
+lang: ru

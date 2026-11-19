@@ -1,0 +1,73 @@
+# ============================================================================
+#  Публикация MkDocs-сайта на GitHub Pages.
+#  Официальная связка actions/upload-pages-artifact + actions/deploy-pages
+#  (не push в ветку gh-pages). См. п.8 задания.
+# ============================================================================
+name: Deploy MkDocs to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+    paths:                      # не гонять сборку из-за правок, не влияющих на сайт
+      - "docs/**"
+      - "data/**"
+      - "scripts/**"
+      - "mkdocs.yml"
+      - "requirements.txt"
+      - ".github/workflows/gh-pages.yml"
+  workflow_dispatch:            # ручной запуск из вкладки Actions
+
+# Права, которые требует механизм GitHub Pages:
+permissions:
+  contents: read
+  pages: write                  # публиковать артефакт на Pages
+  id-token: write               # OIDC-токен для deploy-pages
+
+# Одновременно — только один деплой; новый push отменяет предыдущий.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip            # кэш зависимостей по requirements.txt
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      # Отдаёт base_url/base_path для корректного site_url в подкаталоге /<repo>/
+      - name: Configure Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # Строгая сборка: битые ссылки и предупреждения = ошибка (п.6 задания).
+      # SITE_URL берём из configure-pages, чтобы ссылки/sitemap были каноничны.
+      - name: Build (strict)
+        env:
+          SITE_URL: ${{ steps.pages.outputs.base_url }}
+        run: mkdocs build --strict
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: site            # каталог сборки MkDocs
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

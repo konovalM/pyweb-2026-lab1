@@ -1,0 +1,36 @@
+# Виртуальное окружение
+.venv/
+venv/
+env/
+
+# Каталоги сборки (комментарии — отдельной строкой: git не понимает inline-#)
+# MkDocs
+site/
+# Sphinx
+_build/
+sphinx/_build/
+# Quarto
+quarto/_site/
+quarto/.quarto/
+# кэш mkdocs-bibtex и т.п.
+.cache/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+
+# Сгенерированные фигуры (пересобираются скриптом)
+docs/assets/generated/
+
+# ОС / редакторы
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# Секреты (на всякий случай — в CI используем GitHub Secrets)
+.env
+*.pem
+id_rsa*

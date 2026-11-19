@@ -1,0 +1,7 @@
+# Зависимости второго генератора (Sphinx + MyST) для сравнения в P2.
+# Ставятся в то же venv: pip install -r requirements-sphinx.txt
+sphinx==7.4.7
+myst-parser==3.0.1
+sphinxcontrib-bibtex==2.6.3
+furo==2024.8.6
+# matplotlib / plotly / pandas / numpy уже стоят из requirements.txt

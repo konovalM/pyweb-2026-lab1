@@ -1,0 +1,76 @@
+# ============================================================================
+#  Деплой MkDocs-сайта на отечественный хостинг (сервер Selectel) по SSH.
+#  ШАБЛОН: активируется, когда в настройках репозитория заданы секреты
+#  (Settings → Secrets and variables → Actions). Без них job не запустится.
+#
+#  Нужные секреты:
+#    SELECTEL_HOST        — IP или домен сервера
+#    SELECTEL_USER        — SSH-пользователь (напр. deploy)
+#    SELECTEL_SSH_KEY     — приватный SSH-ключ (весь файл, с заголовками)
+#    SELECTEL_PATH        — путь к статике на сервере (напр. /var/www/ps-research)
+#  Переменная (Variables):
+#    SELECTEL_SITE_URL    — публичный URL сайта (напр. https://research.example.ru/)
+# ============================================================================
+name: Deploy to Selectel (SSH)
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]            # деплой только из main (п.P1: с одной ветки)
+    paths:
+      - "docs/**"
+      - "data/**"
+      - "scripts/**"
+      - "mkdocs.yml"
+      - "requirements.txt"
+      - ".github/workflows/deploy-selectel.yml"
+
+concurrency:
+  group: selectel
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    # Пропускаем job, пока не задан секрет с хостом (чтобы форк/шаблон не падал).
+    if: ${{ vars.SELECTEL_ENABLED == 'true' }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - run: pip install -r requirements.txt
+
+      - name: Build (strict)
+        env:
+          SITE_URL: ${{ vars.SELECTEL_SITE_URL }}
+        run: mkdocs build --strict
+
+      - name: Setup SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SELECTEL_SSH_KEY }}" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          ssh-keyscan -H "${{ secrets.SELECTEL_HOST }}" >> ~/.ssh/known_hosts
+
+      # rsync с --delete: зеркалируем каталог сборки в каталог статики на сервере.
+      - name: Deploy via rsync
+        run: |
+          rsync -az --delete \
+            -e "ssh -i ~/.ssh/id_deploy" \
+            site/ \
+            "${{ secrets.SELECTEL_USER }}@${{ secrets.SELECTEL_HOST }}:${{ secrets.SELECTEL_PATH }}/"
+
+      # Healthcheck: код 200 + контрольная строка в HTML (п.P4 / «Ход работы» п.12).
+      - name: Healthcheck
+        run: |
+          URL="${{ vars.SELECTEL_SITE_URL }}"
+          code=$(curl -s -o /tmp/page.html -w "%{http_code}" "$URL")
+          echo "HTTP $code for $URL"
+          test "$code" = "200"
+          grep -q "PS-RESEARCH-LIVE" /tmp/page.html \
+            && echo "Контрольная строка найдена" \
+            || (echo "Контрольная строка НЕ найдена"; exit 1)

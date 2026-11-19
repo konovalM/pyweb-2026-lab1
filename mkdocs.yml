@@ -1,0 +1,132 @@
+# ============================================================================
+#  Predictive Sensorics — Research Site (MkDocs + Material)
+#  Лаб. работа 1: генераторы статических сайтов для публикации исследований
+# ============================================================================
+
+site_name: "Predictive Sensorics · Research"
+site_description: "Прогнозирование остаточного ресурса промышленного оборудования по вибродиагностике"
+site_author: "Predictive Sensorics / ИТМО"
+
+# ВАЖНО (п.11 задания): базовый URL.
+#  - GitHub Pages: https://<GH_USER>.github.io/<REPO>/  (сайт лежит в подкаталоге /<REPO>/)
+#  - Selectel:     http://<домен или IP>/                (корень сайта)
+# site_url фиксирует канонические ссылки/sitemap. Меняется под каждый хостинг
+# через переменную окружения SITE_URL (см. workflow'ы в .github/workflows/).
+site_url: !ENV [SITE_URL, "https://konovalm.github.io/pyweb-2026-lab1/"]
+
+# use_directory_urls: true → красивые ссылки /page/ вместо /page.html.
+# Типичная ошибка из задания: на GitHub Pages (в подкаталоге) работает,
+# а на Selectel (в корне, за nginx) ломается, если nginx не отдаёт index.html
+# для каталога. Решение — try_files в nginx-конфиге (см. deploy/nginx.conf).
+use_directory_urls: true
+
+repo_url: "https://github.com/konovalM/pyweb-2026-lab1"
+repo_name: "konovalM/pyweb-2026-lab1"
+edit_uri: ""
+
+# --- Лицензия на контент (CC BY 4.0), на код — MIT (см. файлы LICENSE*) ---
+copyright: >
+  © 2026 Predictive Sensorics. Контент под
+  <a href="https://creativecommons.org/licenses/by/4.0/">CC BY 4.0</a>,
+  код — <a href="https://opensource.org/license/mit/">MIT</a>.
+
+theme:
+  name: material
+  language: ru
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-night
+        name: Тёмная тема
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: teal
+      accent: deep orange
+      toggle:
+        icon: material/weather-sunny
+        name: Светлая тема
+  features:
+    - navigation.instant
+    - navigation.tracking
+    - navigation.sections
+    - navigation.top
+    - navigation.footer
+    - toc.follow
+    - content.code.copy
+    - content.code.annotate
+    - search.highlight
+    - search.suggest
+  icon:
+    repo: fontawesome/brands/github
+
+# Хук воспроизводимого конвейера: на on_pre_build пересобирает графики
+# из data/degradation.csv (matplotlib + Plotly) перед каждой сборкой сайта.
+hooks:
+  - scripts/gen_figures.py
+
+# Поиск (проверяется в задании — работает ли поиск после деплоя)
+plugins:
+  - search:
+      lang:
+        - ru
+        - en
+  # Автосписок литературы из docs/refs.bib (P2)
+  - bibtex:
+      bib_file: "docs/refs.bib"
+      csl_file: ""        # стиль по умолчанию
+  # Подписи и нумерация таблиц/рисунков (P2: «таблица с подписью»)
+  - caption:
+      table:
+        enable: true
+        start_index: 1
+      figure:
+        enable: true
+        start_index: 1
+
+markdown_extensions:
+  # Формулы LaTeX (MathJax) — нумерация + \label/\eqref (P2)
+  - pymdownx.arithmatex:
+      generic: true
+  # Подсветка кода + номера строк (P2: «листинг с подсветкой»)
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+  - pymdownx.snippets
+  # Сноски (P2: «сноска»)
+  - footnotes
+  # Таблицы
+  - tables
+  # Admonitions / выноски
+  - admonition
+  - pymdownx.details
+  # Двухколоночный блок и прочая разметка (P2: «двухколоночный блок»)
+  - attr_list
+  - md_in_html
+  - pymdownx.keys
+  # Оглавление с якорями и перекрёстными ссылками (P2: «перекрёстная ссылка»)
+  - toc:
+      permalink: true
+      toc_depth: 3
+
+extra_javascript:
+  - javascripts/mathjax.js
+  - https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js
+
+extra_css:
+  - stylesheets/extra.css
+
+nav:
+  - Главная: index.md
+  - Исследование:
+      - "Прогноз остаточного ресурса (RUL)": research/rul-vibration.md
+  - О проекте: about.md
