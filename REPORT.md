@@ -250,9 +250,36 @@ RU-поиск из коробки, тривиальный CI на GitHub Pages, 
   GitHub — выбор генератора вторичен; критичнее перенос CI на GitVerse/SourceCraft
   или GitLab CI на сервере (как уже сделано для ps-landing).
 
-## Приложение. Скриншоты (вставить)
+## Приложение. Скриншоты запусков CI
 
-- [ ] Успешный запуск workflow `Deploy MkDocs to GitHub Pages` (вкладка Actions).
-- [ ] Проваленный запуск (например, до исправления ошибки 1) — для раздела «Отладка».
-- [ ] Опубликованная страница на GitHub Pages (формулы, графики, таблица).
-- [ ] Страница на отечественном хостинге (Selectel) + ответ `curl -I` с кодом 200.
+**Проваленный запуск** — сборка падает на шаге *Configure Pages* (`Get Pages site
+failed`), потому что в репозитории ещё не включён источник Pages = GitHub Actions
+(см. также раздел «Отладка»):
+
+![Проваленный запуск: ошибка на шаге Configure Pages](report-assets/ci-failed-configure-pages.png)
+
+**Запуск после включения Pages (в процессе):** граф `build → deploy`:
+
+![Запуск workflow в процессе](report-assets/ci-in-progress.png)
+
+**Успешный запуск** — статус *Success*, общая длительность 1m 0s
+(`build` 40 с → `deploy` 10 с), опубликован артефакт и URL GitHub Pages:
+
+![Успешный запуск: build 40s, deploy 10s, Success](report-assets/ci-success.png)
+
+### Время публикации на GitHub Pages (из CI)
+
+| Этап workflow | Время |
+|---------------|-------|
+| build (сборка `mkdocs build --strict` + графики) | 40 с |
+| deploy (`deploy-pages`) | 10 с |
+| **Итого прогон** | **1 мин 0 с** |
+
+### Проверка отечественного хостинга (Selectel)
+
+```console
+$ curl -s -o /dev/null -w "%{http_code} %{time_total}s\n" http://94.154.130.35.sslip.io/
+200 0.489s
+$ curl -s http://94.154.130.35.sslip.io/ | grep -o "PS-RESEARCH-LIVE"
+PS-RESEARCH-LIVE
+```
