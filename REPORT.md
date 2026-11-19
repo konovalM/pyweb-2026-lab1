@@ -31,7 +31,7 @@
 | 6 | Git + GitHub | репозиторий, ветка `main` |
 | 7 | GitHub Actions → Pages | `gh-pages.yml` (official `upload-pages-artifact` + `deploy-pages`) |
 | 8 | Базовый URL | `site_url` через `SITE_URL` (env), `use_directory_urls: true` |
-| 9 | Отечественный хостинг | шаблон `deploy-selectel.yml` (rsync по SSH + healthcheck), `deploy/nginx.conf` |
+| 9 | Отечественный хостинг | развёрнут на сервере Selectel (`scripts/deploy-selectel.sh`): изолированный контейнер nginx на :80, rsync по SSH, healthcheck. Шаблон CI — `deploy-selectel.yml` |
 | 10 | Лицензии | контент — CC BY 4.0 (`LICENSE-content`), код — MIT (`LICENSE`) |
 
 **Различие двух подходов к публикации на Pages (п.8 задания).**
@@ -144,8 +144,40 @@
 
 - Репозиторий GitHub: <https://github.com/konovalM/pyweb-2026-lab1>
 - Сайт на GitHub Pages: <https://konovalm.github.io/pyweb-2026-lab1/>
-  (станет доступен после первого запуска workflow и включения Pages)
-- Сайт на отечественном хостинге (Selectel): `https://<домен>/` — по готовности сервера
+- Сайт на отечественном хостинге (Selectel): <http://94.154.130.35.sslip.io/>
+
+> Про «отечественность»: хостинг-провайдер — **Selectel** (российская компания,
+> как Timeweb/VK Cloud/Cloud.ru из примеров задания); конкретная нода
+> расположена за пределами РФ. Требование «отечественный хостинг» трактуется по
+> провайдеру.
+
+### 5.1. Развёртывание на Selectel (что сделано)
+
+Сайт развёрнут **рядом** с уже работающими на сервере сервисами (Telegram-бот
+`ai-system`, панель `3x-ui`, Portainer и др.) — в **изолированном контейнере**
+`nginx:alpine` на свободном порту 80, без остановки или изменения существующих
+контейнеров. Пайплайн оформлен скриптом `scripts/deploy-selectel.sh`:
+
+1. `mkdocs build --strict` с `SITE_URL=http://94.154.130.35.sslip.io/`;
+2. `rsync -az --delete` статики в `/opt/ps-research/html`;
+3. `docker run` контейнера `ps-research` (порт 80, монтирование статики и
+   nginx-конфига только на чтение, `--restart unless-stopped`);
+4. healthcheck: HTTP-код + контрольная строка `PS-RESEARCH-LIVE`.
+
+nginx отдаёт «красивые» URL каталогов через `try_files $uri $uri/
+$uri/index.html =404` — без этого `use_directory_urls: true` вернул бы 404 на
+страницах вида `/research/rul-vibration/` (на GitHub Pages это решается
+автоматически, на своём nginx — вручную).
+
+### 5.2. Измерения деплоя
+
+| Этап | Значение |
+|------|----------|
+| Загрузка статики (rsync, 55 файлов) | < 1 с |
+| Старт контейнера (без учёта однократного `docker pull`) | ~2 с |
+| Healthcheck снаружи: код ответа | HTTP 200 |
+| Healthcheck снаружи: время ответа главной | 0.49 с |
+| Контрольная строка в HTML | найдена |
 
 ## 6. Отладка (реальные ошибки)
 

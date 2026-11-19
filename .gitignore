@@ -6,6 +6,7 @@ env/
 # Каталоги сборки (комментарии — отдельной строкой: git не понимает inline-#)
 # MkDocs
 site/
+site-selectel/
 # Sphinx
 _build/
 sphinx/_build/
